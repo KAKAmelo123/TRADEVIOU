@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Tradebook — Journal de trading</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#131722;
+  --panel:#1A1E29;
+  --panel-2:#1E222D;
+  --hover:#2A2E39;
+  --border:#2A2E39;
+  --border-soft:#20242E;
+  --text:#D1D4DC;
+  --text-muted:#787B86;
+  --text-faint:#565A64;
+  --blue:#2962FF;
+  --blue-soft:rgba(41,98,255,0.14);
+  --blue-border:rgba(41,98,255,0.4);
+  --green:#089981;
+  --green-soft:rgba(8,153,129,0.14);
+  --green-border:rgba(8,153,129,0.45);
+  --red:#F23645;
+  --red-soft:rgba(242,54,69,0.14);
+  --red-border:rgba(242,54,69,0.45);
+  --amber:#F7A600;
+  --amber-soft:rgba(247,166,0,0.14);
+  --amber-border:rgba(247,166,0,0.4);
+  --violet:#8B5CF6;
+  --violet-soft:rgba(139,92,246,0.16);
+  --violet-border:rgba(139,92,246,0.42);
+  --radius:8px;
+  --font: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --font-mono: 'SF Mono',ui-monospace,'Roboto Mono',Menlo,monospace;
+  --font-serif: Georgia,'Iowan Old Style',serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;}
+body{min-height:100vh;}
+button,input,select,textarea{font-family:inherit;color:inherit;}
+input,select,textarea{background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:9px 10px;font-size:13.5px;outline:none;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);}
+input::placeholder,textarea::placeholder{color:var(--text-faint);}
+button{cursor:pointer;}
+table{border-collapse:collapse;width:100%;}
+.mono{font-family:var(--font-mono);}
+.scroll::-webkit-scrollbar{height:6px;width:6px;}
+.scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.scroll::-webkit-scrollbar-track{background:transparent;}
+
+/* ---------- topbar ---------- */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:20;gap:12px;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:9px;}
+.brand-mark{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,var(--blue),var(--violet));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+.brand-name{font-family:var(--font-serif);font-size:17px;letter-spacing:0.2px;}
+#clock{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);text-align:right;line-height:1.4;}
+#clock .day{color:var(--text);text-transform:capitalize;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:7px;font-size:13px;border:1px solid var(--border);background:transparent;color:var(--text);transition:background .15s ease,border-color .15s ease,transform .1s ease,box-shadow .18s ease;white-space:nowrap;}
+.btn:hover{background:var(--hover);}
+.btn:active{transform:scale(0.97);}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600;}
+.btn-primary:hover{background:#1E53E5;box-shadow:0 4px 16px rgba(41,98,255,0.38);}
+.btn-subtle{background:var(--panel-2);color:var(--text-muted);border-color:transparent;}
+.btn-danger{color:var(--red);border-color:var(--red-border);background:transparent;}
+.btn-danger:hover{background:var(--red-soft);}
+.btn-sm{padding:6px 10px;font-size:12px;}
+.icon{width:14px;height:14px;flex-shrink:0;}
+
+/* ---------- layout ---------- */
+#layout{display:flex;min-height:calc(100vh - 55px);}
+#sidebar{width:230px;flex-shrink:0;border-right:1px solid var(--border);padding:18px 12px;display:flex;flex-direction:column;gap:16px;background:var(--panel);}
+.side-label{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.8px;padding:0 6px;}
+.side-item{display:flex;align-items:center;gap:8px;padding:9px 9px;border-radius:7px;cursor:pointer;border:1px solid transparent;border-left:3px solid transparent;transition:background .15s ease,border-color .15s ease;}
+.side-item[data-type="prop"]{border-left-color:var(--violet);}
+.side-item[data-type="real"]{border-left-color:var(--blue);}
+.side-item[data-type="demo"]{border-left-color:var(--text-faint);}
+.side-item:hover{background:var(--hover);}
+.side-item.active{background:var(--panel-2);border-color:var(--border);}
+.side-item .name{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.side-item .tag{font-family:var(--font-mono);font-size:9px;color:var(--text-faint);border:1px solid var(--border);border-radius:4px;padding:1px 4px;flex-shrink:0;}
+.side-item .pnl{font-family:var(--font-mono);font-size:11px;flex-shrink:0;}
+#main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.main-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;}
+.main-title{font-family:var(--font-serif);font-size:18px;}
+.badges{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:11px;white-space:nowrap;border:1px solid var(--border);background:var(--panel-2);color:var(--text-muted);transition:background .15s ease,border-color .15s ease;}
+.pill.green{background:var(--green-soft);border-color:var(--green-border);color:var(--green);}
+.pill.red{background:var(--red-soft);border-color:var(--red-border);color:var(--red);}
+.pill.amber{background:var(--amber-soft);border-color:var(--amber-border);color:var(--amber);}
+.pill.blue{background:var(--blue-soft);border-color:var(--blue-border);color:#6C9BFF;}
+.pill.violet{background:var(--violet-soft);border-color:var(--violet-border);color:#B79CFF;}
+
+/* tabs */
+#tabs{display:flex;gap:22px;padding:0 24px;border-bottom:1px solid var(--border);overflow-x:auto;position:relative;}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-muted);font-size:13px;padding:12px 2px;white-space:nowrap;transition:color .18s ease;}
+.tab-btn.active{color:var(--text);}
+.tab-btn:hover{color:var(--text);}
+.tab-indicator{position:absolute;bottom:-1px;height:2px;background:linear-gradient(90deg,var(--blue),var(--violet));border-radius:2px;transition:left .28s cubic-bezier(.4,0,.2,1),width .28s cubic-bezier(.4,0,.2,1);pointer-events:none;}
+#content{transition:none;}
+#content.enter{animation:fadeSlideIn .32s cubic-bezier(.25,.8,.35,1) both;}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+#content{flex:1;padding:22px 24px;overflow:auto;}
+
+/* kpi cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+.kpi{background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--border);border-radius:10px;padding:14px 16px;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.3);}
+.kpi.kpi-g{border-top-color:var(--green);}
+.kpi.kpi-r{border-top-color:var(--red);}
+.kpi.kpi-a{border-top-color:var(--amber);}
+.kpi.kpi-b{border-top-color:var(--blue);}
+.kpi.kpi-v{border-top-color:var(--violet);}
+.kpi .label{font-size:11.5px;color:var(--text-muted);margin-bottom:6px;}
+.kpi .value{font-family:var(--font-mono);font-size:21px;font-weight:600;}
+.kpi .sub{font-size:11px;color:var(--text-faint);margin-top:4px;}
+.g{color:var(--green);} .r{color:var(--red);} .a{color:var(--amber);} .b{color:#6C9BFF;} .v{color:#B79CFF;}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:18px;transition:box-shadow .18s ease,border-color .18s ease;}
+.card:hover{border-color:var(--border-soft);box-shadow:0 6px 18px rgba(0,0,0,0.22);}
+.card-title{font-size:12.5px;color:var(--text-muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+
+/* table */
+th{text-align:left;font-size:10.5px;color:var(--text-faint);font-weight:400;text-transform:uppercase;letter-spacing:0.4px;padding:0 10px 9px;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:10px;font-size:12.5px;border-bottom:1px solid var(--border-soft);vertical-align:middle;white-space:nowrap;}
+tr.trow:hover td{background:var(--hover);}
+tr.today td{background:rgba(41,98,255,0.06);}
+.thumb{width:36px;height:24px;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer;}
+.iconbtn{background:none;border:none;color:var(--text-faint);cursor:pointer;padding:4px;}
+.iconbtn:hover{color:var(--text);}
+
+.empty{color:var(--text-muted);font-size:13px;padding:50px 10px;text-align:center;line-height:1.6;}
+.empty b{display:block;font-family:var(--font-serif);font-size:19px;color:var(--text);margin-bottom:8px;font-weight:400;}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(6,8,12,0.72);display:flex;align-items:flex-start;justify-content:center;padding:36px 14px;z-index:100;overflow-y:auto;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;width:100%;max-width:560px;padding:20px;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-title{font-family:var(--font-serif);font-size:16.5px;}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px;}
+.field-label{font-size:12px;color:var(--text-muted);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.seg{display:flex;gap:8px;}
+.seg-btn{flex:1;padding:8px 6px;border-radius:6px;font-size:12.5px;cursor:pointer;background:var(--panel-2);color:var(--text-muted);border:1px solid var(--border);text-align:center;transition:background .15s ease,border-color .15s ease,color .15s ease;}
+.seg-btn.sel-long{background:var(--green-soft);color:var(--green);border-color:var(--green-border);}
+.seg-btn.sel-short{background:var(--red-soft);color:var(--red);border-color:var(--red-border);}
+.seg-btn.sel-type{background:var(--blue-soft);color:#6C9BFF;border-color:var(--blue-border);}
+.toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;}
+.toggle-track{width:34px;height:19px;border-radius:10px;background:var(--panel-2);border:1px solid var(--border);position:relative;transition:background .15s;flex-shrink:0;}
+.toggle-track.on{background:var(--green);border-color:var(--green);}
+.toggle-track.on.amber{background:var(--amber);border-color:var(--amber);}
+.toggle-thumb{position:absolute;top:1px;left:1px;width:15px;height:15px;border-radius:50%;background:#0F1319;transition:left .15s;}
+.toggle-track.on .toggle-thumb{left:16px;}
+.toggle-label{font-size:13px;}
+.err-text{color:var(--red);font-size:12px;margin-bottom:10px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+.conf-wrap{display:flex;flex-wrap:wrap;gap:7px;}
+.conf-chip{padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;background:var(--panel-2);border:1px solid var(--border);color:var(--text-muted);transition:background .15s ease,border-color .15s ease,color .15s ease,transform .1s ease;}
+.conf-chip:hover{border-color:var(--violet-border);color:#B79CFF;}
+.conf-chip:active{transform:scale(0.96);}
+.conf-chip.on{background:var(--violet-soft);border-color:var(--violet-border);color:#B79CFF;}
+.shot-preview{position:relative;display:inline-block;}
+.shot-preview img{width:100px;height:66px;object-fit:cover;border-radius:6px;border:1px solid var(--border);}
+.shot-remove{position:absolute;top:-6px;right:-6px;background:var(--panel-2);border:1px solid var(--border);border-radius:50%;width:18px;height:18px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-size:11px;line-height:1;}
+.lightbox{position:fixed;inset:0;background:rgba(6,8,12,0.9);display:flex;align-items:center;justify-content:center;z-index:110;padding:26px;cursor:zoom-out;}
+.lightbox img{max-width:100%;max-height:100%;border-radius:8px;border:1px solid var(--border);}
+
+/* week nav */
+.week-nav{display:flex;align-items:center;gap:10px;}
+.week-nav .lbl{font-family:var(--font-mono);font-size:13px;color:var(--text);min-width:150px;text-align:center;}
+
+@media(max-width:820px){
+  #layout{flex-direction:column;}
+  #sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);flex-direction:row;align-items:center;overflow-x:auto;padding:12px;gap:10px;}
+  #sidebar .side-label{display:none;}
+  #accounts-list{display:flex;flex-direction:row;gap:6px;overflow-x:auto;flex:1;}
+  .side-item{flex-shrink:0;min-width:150px;}
+  #add-account-btn{flex-shrink:0;}
+  .main-header{padding:14px 16px;}
+  #tabs{padding:0 16px;}
+  #content{padding:16px;}
+  .row2,.row3{grid-template-columns:1fr;}
+  #clock{display:none;}
+}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <div class="brand">
+    <div class="brand-mark">T</div>
+    <div class="brand-name">Tradebook</div>
+  </div>
+  <div id="clock"></div>
+</div>
+<div id="layout">
+  <div id="sidebar">
+    <div id="accounts-list"></div>
+    <button class="btn btn-subtle" id="add-account-btn" onclick="App.openAccountModal()">
+      <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 4v12M4 10h12" stroke-linecap="round"/></svg>
+      Ajouter un compte
+    </button>
+  </div>
+  <div id="main">
+    <div class="main-header">
+      <div>
+        <div class="main-title" id="main-title">Tous les comptes</div>
+        <div class="badges" id="main-badges"></div>
+      </div>
+      <button class="btn btn-primary" onclick="App.openTradeModal()" id="new-trade-btn">
+        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 4v12M4 10h12" stroke-linecap="round"/></svg>
+        Nouveau trade
+      </button>
+    </div>
+    <div id="tabs"></div>
+    <div id="content" class="scroll"></div>
+  </div>
+</div>
+<div id="modal-root"></div>
+
+<script>
+/* =========================================================
+   STORAGE
+========================================================= */
+const LS = {
+  get(key, fallback){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch(e){ return fallback; }
+  },
+  set(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); return true; }
+    catch(e){ console.error('storage error', e); return false; }
+  }
+};
+
+const DEFAULT_TAGS = ["Support/Résistance","Fibonacci","Order Block","Zone de liquidité","Cassure de structure","Moyenne mobile","Volume","News / fondamental","Tendance H4","Divergence RSI"];
+const ACCOUNT_TYPES = [{id:"prop",label:"Prop firm",short:"PF"},{id:"real",label:"Compte réel",short:"RL"},{id:"demo",label:"Compte démo",short:"DM"}];
+const PAIRS = ["EUR/USD","GBP/USD","USD/JPY","XAU/USD","BTC/USD","US30","NAS100","GER40"];
+const INSTRUMENT_MULTIPLIERS = {
+  'XAU/USD':100,'XAUUSD':100,'GOLD':100,
+  'XAG/USD':5000,'XAGUSD':5000,'SILVER':5000,
+  'BTC/USD':1,'BTCUSD':1,'ETH/USD':1,'ETHUSD':1,
+  'US30':1,'DOW':1,'NAS100':1,'US100':1,'NASDAQ':1,'GER40':1,'DE40':1,'DAX':1,
+  'SPX500':1,'US500':1,'UK100':1,'FTSE':1,'JPN225':1,'NIKKEI':1
+};
+function getMultiplier(pair){
+  const p = (pair||'').trim().toUpperCase();
+  if(!p) return null;
+  if(INSTRUMENT_MULTIPLIERS[p] !== undefined) return INSTRUMENT_MULTIPLIERS[p];
+  if(p.includes('/')) return 100000; // paire forex standard : 1 lot = 100 000 unités
+  return null;
+}
+
+/* =========================================================
+   STATE
+========================================================= */
+const state = {
+  accounts: LS.get('tj_accounts', []),
+  trades: LS.get('tj_trades', []),
+  tags: LS.get('tj_tags', DEFAULT_TAGS.slice()),
+  selectedAccountId: 'ALL',
+  tab: 'overview',
+  weekOffset: 0
+};
+let charts = {};
+
+/* =========================================================
+   HELPERS
+========================================================= */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+function fmtMoney(n){
+  const v = Number(n)||0;
+  const sign = v>0?'+':v<0?'−':'';
+  return sign + Math.abs(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
+}
+function fmtPct(n){ return Math.round(Number(n)||0) + ' %'; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDateShort(iso){
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+}
+function mondayOf(d){
+  const dt = new Date(d);
+  const day = (dt.getDay()+6)%7;
+  dt.setDate(dt.getDate()-day);
+  dt.setHours(0,0,0,0);
+  return dt;
+}
+function weekRange(offset){
+  const today = new Date();
+  const mon = mondayOf(today);
+  mon.setDate(mon.getDate() + offset*7);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  return {start:mon, end:sun};
+}
+function fmtRangeLabel(start,end){
+  const f = x => x.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+  return f(start) + ' – ' + f(end) + ', ' + start.getFullYear();
+}
+function inRange(iso, start, end){
+  const d = new Date(iso+'T00:00:00');
+  return d >= start && d <= new Date(end.getFullYear(),end.getMonth(),end.getDate(),23,59,59);
+}
+function isoWeekKey(iso){
+  const d = new Date(iso+'T00:00:00');
+  const target = new Date(d.valueOf());
+  const dayNr = (d.getDay()+6)%7;
+  target.setDate(target.getDate()-dayNr+3);
+  const firstThu = new Date(target.getFullYear(),0,4);
+  const diff = target - firstThu;
+  const week = 1 + Math.round(diff/(7*864e5));
+  return target.getFullYear()+'-S'+String(week).padStart(2,'0');
+}
+
+function compressImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 900;
+        const scale = Math.min(1, maxW/img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width*scale);
+        canvas.height = Math.round(img.height*scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        resolve(canvas.toDataURL('image/jpeg',0.72));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* =========================================================
+   PERSISTENCE
+========================================================= */
+function saveAccounts(){ LS.set('tj_accounts', state.accounts); }
+function saveTrades(){ LS.set('tj_trades', state.trades); }
+function saveTags(){ LS.set('tj_tags', state.tags); }
+
+/* =========================================================
+   CLOCK
+========================================================= */
+function tickClock(){
+  const now = new Date();
+  const day = now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const time = now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const el = document.getElementById('clock');
+  if(el) el.innerHTML = '<div class="day">'+esc(day)+'</div><div>'+time+'</div>';
+}
+tickClock();
+setInterval(tickClock, 15000);
+window.addEventListener('resize', ()=>{ positionTabIndicator(); });
+
+/* =========================================================
+   DERIVED
+========================================================= */
+function accountById(id){ return state.accounts.find(a=>a.id===id); }
+function visibleTrades(){
+  let list;
+  if(state.selectedAccountId==='ALL') list = state.trades.slice();
+  else list = state.trades.filter(t=>t.accountId===state.selectedAccountId);
+  return list.slice().sort((a,b)=> a.date<b.date?-1:a.date>b.date?1:0);
+}
+function computeStats(trades){
+  const n = trades.length;
+  if(n===0) return {n:0,pnl:0,winRate:0,planRate:0,emoRate:0,avgWin:0,avgLoss:0,best:0,worst:0};
+  const wins = trades.filter(t=>t.pnl>0), losses = trades.filter(t=>t.pnl<0);
+  const pnl = trades.reduce((s,t)=>s+t.pnl,0);
+  const planOk = trades.filter(t=>t.planRespected).length;
+  const emo = trades.filter(t=>t.emotional).length;
+  const avgWin = wins.length ? wins.reduce((s,t)=>s+t.pnl,0)/wins.length : 0;
+  const avgLoss = losses.length ? losses.reduce((s,t)=>s+t.pnl,0)/losses.length : 0;
+  return {
+    n, pnl, winRate: wins.length/n*100, planRate: planOk/n*100, emoRate: emo/n*100,
+    avgWin, avgLoss, best: Math.max(...trades.map(t=>t.pnl)), worst: Math.min(...trades.map(t=>t.pnl))
+  };
+}
+function confluenceStats(trades){
+  const map = {};
+  trades.forEach(t=>{
+    (t.confluences||[]).forEach(tag=>{
+      if(!map[tag]) map[tag] = {tag, n:0, wins:0, pnl:0};
+      map[tag].n++;
+      if(t.pnl>0) map[tag].wins++;
+      map[tag].pnl += t.pnl;
+    });
+  });
+  return Object.values(map).sort((a,b)=>b.n-a.n);
+}
+
+/* =========================================================
+   RENDER: SIDEBAR
+========================================================= */
+function renderSidebar(){
+  const list = document.getElementById('accounts-list');
+  let html = '';
+  html += `<div class="side-item ${state.selectedAccountId==='ALL'?'active':''}" onclick="App.selectAccount('ALL')">
+    <div class="name">Tous les comptes</div>
+  </div>`;
+  state.accounts.forEach(acc=>{
+    const t = ACCOUNT_TYPES.find(x=>x.id===acc.type) || ACCOUNT_TYPES[0];
+    const accTrades = state.trades.filter(tr=>tr.accountId===acc.id);
+    const pnl = accTrades.reduce((s,t)=>s+t.pnl,0);
+    html += `<div class="side-item ${state.selectedAccountId===acc.id?'active':''}" data-type="${acc.type}" onclick="App.selectAccount('${acc.id}')">
+      <span class="tag">${t.short}</span>
+      <div class="name">${esc(acc.name)}</div>
+      <span class="pnl ${pnl>=0?'g':'r'}">${fmtMoney(pnl)}</span>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+/* =========================================================
+   RENDER: HEADER
+========================================================= */
+function renderHeader(){
+  const title = document.getElementById('main-title');
+  const badges = document.getElementById('main-badges');
+  document.getElementById('new-trade-btn').style.display = state.accounts.length ? 'inline-flex' : 'none';
+  if(state.selectedAccountId==='ALL'){
+    title.textContent = 'Tous les comptes';
+    badges.innerHTML = '';
+    return;
+  }
+  const acc = accountById(state.selectedAccountId);
+  if(!acc){ state.selectedAccountId='ALL'; return render(); }
+  title.textContent = acc.name;
+  const t = ACCOUNT_TYPES.find(x=>x.id===acc.type);
+  badges.innerHTML = `<span class="pill">${t.label}</span>` +
+    (acc.firm ? `<span style="font-size:12px;color:var(--text-faint)">${esc(acc.firm)}</span>` : '') +
+    `<button class="iconbtn" onclick="App.openAccountModal('${acc.id}')" title="Modifier">
+      <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 3.5l3 3L6 17l-3.6.6L3 14l10.5-10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="iconbtn" onclick="App.confirmDeleteAccount('${acc.id}')" title="Supprimer">
+      <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6M5.5 6l.6 9.2A1.5 1.5 0 0 0 7.6 16.6h4.8a1.5 1.5 0 0 0 1.5-1.4l.6-9.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>`;
+}
+
+/* =========================================================
+   RENDER: TABS
+========================================================= */
+function renderTabs(){
+  const tabs = [
+    {id:'overview', label:"Vue d'ensemble"},
+    {id:'journal', label:'Journal'},
+    {id:'weekly', label:'Rapport hebdomadaire'},
+    {id:'confluences', label:'Confluences'}
+  ];
+  document.getElementById('tabs').innerHTML = tabs.map(t=>
+    `<button class="tab-btn ${state.tab===t.id?'active':''}" data-tab-id="${t.id}" onclick="App.selectTab('${t.id}')">${t.label}</button>`
+  ).join('') + '<span class="tab-indicator" id="tab-indicator"></span>';
+  positionTabIndicator();
+}
+function positionTabIndicator(){
+  const tabsEl = document.getElementById('tabs');
+  const active = tabsEl.querySelector('.tab-btn.active');
+  const ind = document.getElementById('tab-indicator');
+  if(!active || !ind) return;
+  ind.style.left = active.offsetLeft + 'px';
+  ind.style.width = active.offsetWidth + 'px';
+}
+
+/* =========================================================
+   RENDER: CONTENT ROUTER
+========================================================= */
+function renderContent(){
+  const el = document.getElementById('content');
+  Object.values(charts).forEach(c=>{ try{c.destroy();}catch(e){} });
+  charts = {};
+  if(state.accounts.length===0){
+    el.innerHTML = `<div class="empty"><b>Ouvrez votre premier compte</b>Créez un compte pour chaque prop firm, votre compte réel ou vos comptes démo, puis commencez à enregistrer vos trades.<br><br>
+    <button class="btn btn-primary" onclick="App.openAccountModal()">+ Ajouter un compte</button></div>`;
+    playEnterAnimation(el);
+    return;
+  }
+  if(state.tab==='overview') renderOverview(el);
+  else if(state.tab==='journal') renderJournal(el);
+  else if(state.tab==='weekly') renderWeekly(el);
+  else if(state.tab==='confluences') renderConfluences(el);
+  playEnterAnimation(el);
+}
+
+/* ---------- OVERVIEW ---------- */
+function renderOverview(el){
+  const trades = visibleTrades();
+  const stats = computeStats(trades);
+  if(trades.length===0){
+    el.innerHTML = `<div class="empty">Aucun trade enregistré. Ajoutez votre premier trade pour voir vos statistiques.</div>`;
+    return;
+  }
+  let running = 0;
+  const curve = trades.map((t,i)=>{ running+=t.pnl; return {x:i+1, y:Math.round(running*100)/100}; });
+
+  el.innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi ${stats.pnl>=0?'kpi-g':'kpi-r'}"><div class="label">PnL total</div><div class="value ${stats.pnl>=0?'g':'r'}">${fmtMoney(stats.pnl)}</div></div>
+      <div class="kpi kpi-b"><div class="label">Taux de réussite</div><div class="value">${fmtPct(stats.winRate)}</div><div class="sub">${stats.n} trades</div></div>
+      <div class="kpi kpi-b"><div class="label">Plan respecté</div><div class="value b">${fmtPct(stats.planRate)}</div></div>
+      <div class="kpi ${stats.emoRate>30?'kpi-r':'kpi-a'}"><div class="label">Trades émotionnels</div><div class="value ${stats.emoRate>30?'r':'a'}">${fmtPct(stats.emoRate)}</div></div>
+      <div class="kpi kpi-g"><div class="label">Gain moyen</div><div class="value g">${fmtMoney(stats.avgWin)}</div></div>
+      <div class="kpi kpi-r"><div class="label">Perte moyenne</div><div class="value r">${fmtMoney(stats.avgLoss)}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Courbe de performance cumulée</div>
+      <canvas id="equityCanvas" height="90"></canvas>
+    </div>
+    <div class="kpi-grid" style="margin-bottom:0">
+      <div class="kpi kpi-g"><div class="label">Meilleur trade</div><div class="value g">${fmtMoney(stats.best)}</div></div>
+      <div class="kpi kpi-r"><div class="label">Pire trade</div><div class="value r">${fmtMoney(stats.worst)}</div></div>
+    </div>
+  `;
+  drawLineChart('equityCanvas', curve, 'equity');
+}
+
+/* ---------- JOURNAL ---------- */
+function renderJournal(el){
+  const trades = visibleTrades().slice().reverse();
+  if(trades.length===0){
+    el.innerHTML = `<div class="empty">Aucun trade pour l'instant. Cliquez sur « Nouveau trade » pour commencer votre journal.</div>`;
+    return;
+  }
+  const showAcc = state.selectedAccountId==='ALL';
+  const today = todayISO();
+  let rows = trades.map(t=>{
+    const acc = accountById(t.accountId);
+    const confs = (t.confluences||[]).slice(0,2).map(c=>`<span class="pill violet" style="margin-right:3px">${esc(c)}</span>`).join('') +
+      ((t.confluences||[]).length>2 ? `<span class="pill">+${t.confluences.length-2}</span>` : '');
+    return `<tr class="trow ${t.date===today?'today':''}">
+      <td class="mono" style="color:var(--text-muted)">${fmtDateShort(t.date)}</td>
+      ${showAcc?`<td style="color:var(--text-muted)">${esc(acc?acc.name:'—')}</td>`:''}
+      <td class="mono">${esc(t.pair)}</td>
+      <td><span class="pill ${t.direction==='long'?'green':'red'}">${t.direction==='long'?'Long':'Short'}</span></td>
+      <td class="mono" style="color:var(--text-muted)">${esc(t.size||'—')}</td>
+      <td class="mono" style="font-weight:600" ><span class="${t.pnl>=0?'g':'r'}">${fmtMoney(t.pnl)}</span></td>
+      <td>${t.planRespected?svgCheck('var(--green)'):svgX('var(--red)')}</td>
+      <td>${t.emotional?svgFlame('var(--amber)'):'<span style="color:var(--text-faint);font-size:11px">—</span>'}</td>
+      <td>${confs || '<span style="color:var(--text-faint);font-size:11px">—</span>'}</td>
+      <td>${t.screenshot?`<img class="thumb" src="${t.screenshot}" onclick="App.showLightbox('${t.id}')">`:'<span style="color:var(--text-faint);font-size:11px">—</span>'}</td>
+      <td style="text-align:right">
+        <button class="iconbtn" onclick="App.openTradeModal('${t.id}')" title="Modifier">${svgEdit()}</button>
+        <button class="iconbtn" onclick="App.confirmDeleteTrade('${t.id}')" title="Supprimer" style="color:var(--red)">${svgTrash()}</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `<div class="scroll" style="overflow-x:auto">
+    <table style="min-width:920px">
+      <thead><tr>
+        <th>Date</th>${showAcc?'<th>Compte</th>':''}<th>Paire</th><th>Sens</th><th>Taille</th><th>PnL</th><th>Plan</th><th>Émotion</th><th>Confluences</th><th>Capture</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+/* ---------- WEEKLY REPORT ---------- */
+function renderWeekly(el){
+  const {start,end} = weekRange(state.weekOffset);
+  const label = fmtRangeLabel(start,end);
+  const isCurrent = state.weekOffset===0;
+
+  const scopeTrades = state.selectedAccountId==='ALL' ? state.trades : state.trades.filter(t=>t.accountId===state.selectedAccountId);
+  const weekTrades = scopeTrades.filter(t=>inRange(t.date,start,end));
+  const stats = computeStats(weekTrades);
+  const confs = confluenceStats(weekTrades).slice(0,6);
+
+  let perAccountRows = '';
+  if(state.selectedAccountId==='ALL'){
+    state.accounts.forEach(acc=>{
+      const accTrades = weekTrades.filter(t=>t.accountId===acc.id);
+      if(accTrades.length===0) return;
+      const s = computeStats(accTrades);
+      perAccountRows += `<tr class="trow">
+        <td>${esc(acc.name)}</td>
+        <td>${s.n}</td>
+        <td class="mono ${s.pnl>=0?'g':'r'}">${fmtMoney(s.pnl)}</td>
+        <td>${fmtPct(s.winRate)}</td>
+        <td><span class="pill ${s.planRate>=70?'green':s.planRate>=40?'amber':'red'}">${fmtPct(s.planRate)}</span></td>
+        <td><span class="pill ${s.emoRate<=20?'green':s.emoRate<=50?'amber':'red'}">${fmtPct(s.emoRate)}</span></td>
+      </tr>`;
+    });
+  }
+
+  const confRows = confs.map(c=>`<tr class="trow">
+      <td><span class="pill violet">${esc(c.tag)}</span></td>
+      <td>${c.n}</td>
+      <td>${fmtPct(c.n?c.wins/c.n*100:0)}</td>
+      <td class="mono ${c.pnl>=0?'g':'r'}">${fmtMoney(c.pnl)}</td>
+    </tr>`).join('');
+
+  const tradeRows = weekTrades.slice().sort((a,b)=>a.date<b.date?-1:1).map(t=>{
+    const acc = accountById(t.accountId);
+    return `<tr class="trow">
+      <td class="mono" style="color:var(--text-muted)">${fmtDateShort(t.date)}</td>
+      <td style="color:var(--text-muted)">${esc(acc?acc.name:'—')}</td>
+      <td class="mono">${esc(t.pair)}</td>
+      <td><span class="pill ${t.direction==='long'?'green':'red'}">${t.direction==='long'?'Long':'Short'}</span></td>
+      <td class="mono ${t.pnl>=0?'g':'r'}">${fmtMoney(t.pnl)}</td>
+      <td>${(t.confluences||[]).map(c=>`<span class="pill violet" style="margin-right:3px">${esc(c)}</span>`).join('') || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div class="week-nav">
+        <button class="btn btn-sm" onclick="App.shiftWeek(-1)">←</button>
+        <div class="lbl">${label}${isCurrent?' <span style=\"color:var(--blue)\">· en cours</span>':''}</div>
+        <button class="btn btn-sm" onclick="App.shiftWeek(1)" ${isCurrent?'disabled style="opacity:.35;cursor:default"':''}>→</button>
+      </div>
+      ${!isCurrent?'<button class="btn btn-sm btn-subtle" onclick="App.shiftWeek(0,true)">Revenir à cette semaine</button>':''}
+    </div>
+
+    ${weekTrades.length===0? `<div class="empty">Aucun trade sur cette semaine${state.selectedAccountId!=='ALL'?' pour ce compte':''}.</div>` : `
+    <div class="kpi-grid">
+      <div class="kpi kpi-b"><div class="label">Trades</div><div class="value">${stats.n}</div></div>
+      <div class="kpi ${stats.pnl>=0?'kpi-g':'kpi-r'}"><div class="label">PnL de la semaine</div><div class="value ${stats.pnl>=0?'g':'r'}">${fmtMoney(stats.pnl)}</div></div>
+      <div class="kpi kpi-b"><div class="label">Taux de réussite</div><div class="value">${fmtPct(stats.winRate)}</div></div>
+      <div class="kpi kpi-b"><div class="label">Plan respecté</div><div class="value b">${fmtPct(stats.planRate)}</div></div>
+      <div class="kpi kpi-a"><div class="label">Trades émotionnels</div><div class="value a">${fmtPct(stats.emoRate)}</div></div>
+    </div>
+
+    ${perAccountRows ? `<div class="card">
+      <div class="card-title">Détail par compte</div>
+      <div class="scroll" style="overflow-x:auto"><table style="min-width:560px">
+        <thead><tr><th>Compte</th><th>Trades</th><th>PnL</th><th>Réussite</th><th>Plan</th><th>Émotion</th></tr></thead>
+        <tbody>${perAccountRows}</tbody>
+      </table></div>
+    </div>` : ''}
+
+    ${confRows ? `<div class="card">
+      <div class="card-title">Confluences utilisées cette semaine</div>
+      <div class="scroll" style="overflow-x:auto"><table style="min-width:420px">
+        <thead><tr><th>Confluence</th><th>Trades</th><th>Réussite</th><th>PnL</th></tr></thead>
+        <tbody>${confRows}</tbody>
+      </table></div>
+    </div>` : ''}
+
+    <div class="card">
+      <div class="card-title">Trades de la semaine</div>
+      <div class="scroll" style="overflow-x:auto"><table style="min-width:640px">
+        <thead><tr><th>Date</th><th>Compte</th><th>Paire</th><th>Sens</th><th>PnL</th><th>Confluences</th></tr></thead>
+        <tbody>${tradeRows}</tbody>
+      </table></div>
+    </div>
+    `}
+  `;
+}
+
+/* ---------- CONFLUENCES TAB ---------- */
+function renderConfluences(el){
+  const trades = visibleTrades();
+  const stats = confluenceStats(trades);
+  const chips = state.tags.map(tag=>`<span class="pill violet" style="margin:0 6px 6px 0;position:relative">
+      ${esc(tag)}
+      <button onclick="App.removeTag('${esc(tag).replace(/'/g,"\\'")}')" style="background:none;border:none;color:inherit;cursor:pointer;padding:0 0 0 6px;font-size:12px;line-height:1">×</button>
+    </span>`).join('');
+
+  const rows = stats.map(s=>`<tr class="trow">
+      <td><span class="pill violet">${esc(s.tag)}</span></td>
+      <td>${s.n}</td>
+      <td>${fmtPct(s.n?s.wins/s.n*100:0)}</td>
+      <td class="mono ${s.pnl>=0?'g':'r'}">${fmtMoney(s.pnl)}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">Bibliothèque de confluences</div>
+      <div style="margin-bottom:12px">${chips || '<span style="color:var(--text-faint);font-size:12px">Aucune confluence définie.</span>'}</div>
+      <div style="display:flex;gap:8px">
+        <input id="new-tag-input" placeholder="Ex. Cassure de tendance H1" style="max-width:280px">
+        <button class="btn btn-subtle" onclick="App.addTag()">Ajouter</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Performance par confluence ${state.selectedAccountId==='ALL'?'(tous comptes)':''}</div>
+      ${rows ? `<div class="scroll" style="overflow-x:auto"><table style="min-width:460px">
+        <thead><tr><th>Confluence</th><th>Trades</th><th>Réussite</th><th>PnL cumulé</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>` : `<div style="color:var(--text-faint);font-size:12.5px">Justifiez vos trades avec des confluences pour voir apparaître leurs statistiques ici.</div>`}
+    </div>
+  `;
+}
+
+/* ---------- small svg icons ---------- */
+function svgCheck(color){ return `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="${color}" stroke-width="2"><path d="M4 10.5l3.5 3.5L16 5.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function svgX(color){ return `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="${color}" stroke-width="1.8" style="width:13px;height:13px"><path d="M5 5l10 10M15 5L5 15" stroke-linecap="round"/></svg>`; }
+function svgFlame(color){ return `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="${color}" stroke-width="1.5"><path d="M10 2.5s4 3.3 4 7.3a4 4 0 1 1-8 0c0-1 .4-1.8.9-2.6.3.9 1 1.4 1.4 1.1-.4-2 .3-4 1.7-5.8z" stroke-linejoin="round"/></svg>`; }
+function svgEdit(){ return `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px"><path d="M13.5 3.5l3 3L6 17l-3.6.6L3 14l10.5-10.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function svgTrash(){ return `<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px"><path d="M4 6h12M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6M5.5 6l.6 9.2A1.5 1.5 0 0 0 7.6 16.6h4.8a1.5 1.5 0 0 0 1.5-1.4l.6-9.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+
+/* ---------- chart ---------- */
+function drawLineChart(canvasId, points, key){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas || typeof Chart==='undefined') return;
+  const ctx = canvas.getContext('2d');
+  const positive = points.length && points[points.length-1].y >= 0;
+  charts[canvasId] = new Chart(ctx, {
+    type:'line',
+    data:{ labels: points.map(p=>p.x), datasets:[{
+      data: points.map(p=>p.y),
+      borderColor: positive ? '#089981' : '#F23645',
+      backgroundColor: positive ? 'rgba(8,153,129,0.08)' : 'rgba(242,54,69,0.08)',
+      borderWidth:2, pointRadius:0, tension:0.15, fill:true
+    }]},
+    options:{
+      responsive:true,
+      plugins:{ legend:{display:false}, tooltip:{
+        backgroundColor:'#1E222D', borderColor:'#2A2E39', borderWidth:1, titleColor:'#787B86', bodyColor:'#D1D4DC',
+        callbacks:{ label: (c)=> fmtMoney(c.parsed.y), title: (c)=> 'Trade #'+c[0].label }
+      }},
+      scales:{
+        x:{ grid:{color:'#20242E'}, ticks:{color:'#565A64', font:{size:10}} },
+        y:{ grid:{color:'#20242E'}, ticks:{color:'#565A64', font:{size:10}} }
+      }
+    }
+  });
+}
+
+function playEnterAnimation(el){
+  el.classList.remove('enter');
+  void el.offsetWidth;
+  el.classList.add('enter');
+}
+
+/* =========================================================
+   MASTER RENDER
+========================================================= */
+function render(){
+  renderSidebar();
+  renderHeader();
+  renderTabs();
+  renderContent();
+}
+
+/* =========================================================
+   MODALS: helpers
+========================================================= */
+function closeModal(){ document.getElementById('modal-root').innerHTML=''; }
+function modalShell(title, bodyHtml, width){
+  return `<div class="overlay" onclick="if(event.target===this) App.closeModal()">
+    <div class="modal" style="max-width:${width||480}px">
+      <div class="modal-head">
+        <div class="modal-title">${title}</div>
+        <button class="iconbtn" onclick="App.closeModal()"><svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" style="width:16px;height:16px"><path d="M5 5l10 10M15 5L5 15" stroke-linecap="round"/></svg></button>
+      </div>
+      ${bodyHtml}
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   MODAL: ACCOUNT
+========================================================= */
+function openAccountModal(accountId){
+  const acc = accountId ? accountById(accountId) : {id:null,name:'',type:'prop',firm:'',startBalance:''};
+  const body = `
+    <div class="field"><div class="field-label">Nom du compte</div>
+      <input id="f-name" placeholder="Ex. FTMO 100k, Compte réel IC Markets…" value="${esc(acc.name)}"></div>
+    <div class="field"><div class="field-label">Type</div>
+      <div class="seg" id="f-type-seg">
+        ${ACCOUNT_TYPES.map(t=>`<div class="seg-btn ${acc.type===t.id?'sel-type':''}" data-type="${t.id}" onclick="App.pickAccountType('${t.id}')">${t.label}</div>`).join('')}
+      </div></div>
+    <div class="field"><div class="field-label">Firme / broker (optionnel)</div>
+      <input id="f-firm" placeholder="Ex. FTMO, IC Markets…" value="${esc(acc.firm||'')}"></div>
+    <div class="field"><div class="field-label">Capital de départ (optionnel)</div>
+      <input id="f-balance" class="mono" placeholder="10000" inputmode="decimal" value="${esc(acc.startBalance||'')}"></div>
+    <div id="f-err" class="err-text" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="App.closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="App.submitAccount('${acc.id||''}')">${acc.id?'Enregistrer':'Créer le compte'}</button>
+    </div>
+  `;
+  document.getElementById('modal-root').innerHTML = modalShell(acc.id?'Modifier le compte':'Nouveau compte', body);
+  window._accType = acc.type;
+}
+function pickAccountType(t){
+  window._accType = t;
+  document.querySelectorAll('#f-type-seg .seg-btn').forEach(b=>{
+    b.classList.toggle('sel-type', b.dataset.type===t);
+  });
+}
+function submitAccount(id){
+  const name = document.getElementById('f-name').value.trim();
+  const errEl = document.getElementById('f-err');
+  if(!name){ errEl.style.display='block'; errEl.textContent="Donnez un nom à ce compte."; return; }
+  const data = {
+    name,
+    type: window._accType || 'prop',
+    firm: document.getElementById('f-firm').value.trim(),
+    startBalance: document.getElementById('f-balance').value.trim()
+  };
+  if(id){
+    const idx = state.accounts.findIndex(a=>a.id===id);
+    state.accounts[idx] = {...state.accounts[idx], ...data};
+  } else {
+    const newAcc = {...data, id:uid(), createdAt:new Date().toISOString()};
+    state.accounts.push(newAcc);
+    state.selectedAccountId = newAcc.id;
+  }
+  saveAccounts();
+  closeModal();
+  render();
+}
+function confirmDeleteAccount(id){
+  const acc = accountById(id);
+  openConfirm('Supprimer ce compte ?', "Tous les trades associés à ce compte seront définitivement supprimés.", ()=>{
+    state.accounts = state.accounts.filter(a=>a.id!==id);
+    state.trades = state.trades.filter(t=>t.accountId!==id);
+    saveAccounts(); saveTrades();
+    if(state.selectedAccountId===id) state.selectedAccountId='ALL';
+    closeModal();
+    render();
+  });
+}
+
+/* =========================================================
+   MODAL: TRADE
+========================================================= */
+let tradeFormState = null;
+function openTradeModal(tradeId){
+  if(state.accounts.length===0) return;
+  const existing = tradeId ? state.trades.find(t=>t.id===tradeId) : null;
+  tradeFormState = existing ? {
+    ...existing,
+    confluences: new Set(existing.confluences||[]),
+    screenshot: existing.screenshot || null
+  } : {
+    id:null,
+    accountId: state.selectedAccountId==='ALL' ? state.accounts[0].id : state.selectedAccountId,
+    date: todayISO(),
+    pair:'', direction:'long', entry:'', exit:'', size:'', pnl:'',
+    planRespected:true, emotional:false, emotionNote:'',
+    confluences:new Set(), confluenceNote:'', notes:'', screenshot:null
+  };
+  const f = tradeFormState;
+
+  const body = `
+    <div class="row2">
+      <div class="field"><div class="field-label">Compte</div>
+        <select id="f-account">${state.accounts.map(a=>`<option value="${a.id}" ${a.id===f.accountId?'selected':''}>${esc(a.name)}</option>`).join('')}</select>
+      </div>
+      <div class="field"><div class="field-label">Date</div><input type="date" id="f-date" value="${f.date}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><div class="field-label">Paire / instrument</div>
+        <input id="f-pair" list="pairs-list" placeholder="EUR/USD" value="${esc(f.pair)}">
+        <datalist id="pairs-list">${PAIRS.map(p=>`<option value="${p}">`).join('')}</datalist>
+      </div>
+      <div class="field"><div class="field-label">Sens</div>
+        <div class="seg">
+          <div class="seg-btn ${f.direction==='long'?'sel-long':''}" id="dir-long" onclick="App.pickDirection('long')">Long</div>
+          <div class="seg-btn ${f.direction==='short'?'sel-short':''}" id="dir-short" onclick="App.pickDirection('short')">Short</div>
+        </div>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field"><div class="field-label">Entrée</div><input id="f-entry" class="mono" inputmode="decimal" placeholder="1.0842" value="${esc(f.entry)}"></div>
+      <div class="field"><div class="field-label">Sortie</div><input id="f-exit" class="mono" inputmode="decimal" placeholder="1.0870" value="${esc(f.exit)}"></div>
+      <div class="field"><div class="field-label">Taille</div><input id="f-size" placeholder="0.5 lot" value="${esc(f.size)}"></div>
+    </div>
+    <div class="field"><div class="field-label">PnL (€) — calculé automatiquement</div>
+      <input id="f-pnl" class="mono" style="font-size:16px;font-weight:600" inputmode="decimal" placeholder="0.00" value="${esc(f.pnl)}">
+      <div id="pnl-hint" style="font-size:11px;color:var(--text-faint);margin-top:1px">Renseignez l'entrée, la sortie et la taille pour un calcul automatique.</div>
+    </div>
+
+    <div style="display:flex;gap:26px;padding:11px 0;border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft);margin-bottom:13px">
+      <div>
+        <div class="field-label" style="margin-bottom:7px">Plan respecté</div>
+        <div class="toggle" onclick="App.toggleField('planRespected')">
+          <div class="toggle-track ${f.planRespected?'on':''}" id="tg-plan"><div class="toggle-thumb"></div></div>
+          <span class="toggle-label" id="tg-plan-label">${f.planRespected?'Oui':'Non'}</span>
+        </div>
+      </div>
+      <div>
+        <div class="field-label" style="margin-bottom:7px">Trade émotionnel</div>
+        <div class="toggle" onclick="App.toggleField('emotional')">
+          <div class="toggle-track ${f.emotional?'on amber':''}" id="tg-emo"><div class="toggle-thumb"></div></div>
+          <span class="toggle-label" id="tg-emo-label">${f.emotional?'Oui':'Non'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="emo-note-wrap" style="display:${f.emotional?'block':'none'}">
+      <div class="field"><div class="field-label">Qu'est-ce qui a déclenché l'émotion ?</div>
+        <textarea id="f-emo-note" style="min-height:56px" placeholder="Ex. peur de rater le mouvement, revenge trade après une perte…">${esc(f.emotionNote)}</textarea>
+      </div>
+    </div>
+
+    <div class="field"><div class="field-label">Confluences — qu'est-ce qui justifiait ce trade ?</div>
+      <div class="conf-wrap" id="conf-wrap">
+        ${state.tags.map(tag=>`<div class="conf-chip ${f.confluences.has(tag)?'on':''}" data-tag="${esc(tag)}" onclick="App.toggleConfluence('${esc(tag).replace(/'/g,"\\'")}')">${esc(tag)}</div>`).join('')}
+      </div>
+      ${state.tags.length===0?'<div style="font-size:11.5px;color:var(--text-faint);margin-top:4px">Ajoutez des confluences dans l’onglet « Confluences ».</div>':''}
+    </div>
+    <div class="field"><div class="field-label">Justification (facultatif)</div>
+      <textarea id="f-conf-note" style="min-height:56px" placeholder="Expliquez pourquoi ces éléments techniques justifiaient l'entrée…">${esc(f.confluenceNote)}</textarea></div>
+
+    <div class="field"><div class="field-label">Notes (optionnel)</div>
+      <textarea id="f-notes" style="min-height:56px" placeholder="Contexte, setup, ce que vous retenez…">${esc(f.notes)}</textarea></div>
+
+    <div class="field"><div class="field-label">Capture d'écran</div>
+      <div id="shot-area">${shotAreaHtml(f.screenshot)}</div>
+      <input type="file" id="f-file" accept="image/*" style="display:none" onchange="App.handleFile(event)">
+    </div>
+
+    <div id="f-err" class="err-text" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="App.closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="App.submitTrade()">${f.id?'Enregistrer':'Ajouter le trade'}</button>
+    </div>
+  `;
+  document.getElementById('modal-root').innerHTML = modalShell(f.id?'Modifier le trade':'Nouveau trade', body, 580);
+  ['f-pair','f-entry','f-exit','f-size'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', recalcPnl);
+  });
+  recalcPnl();
+}
+function recalcPnl(){
+  const pairEl = document.getElementById('f-pair');
+  const entryEl = document.getElementById('f-entry');
+  const exitEl = document.getElementById('f-exit');
+  const sizeEl = document.getElementById('f-size');
+  const pnlEl = document.getElementById('f-pnl');
+  const hintEl = document.getElementById('pnl-hint');
+  if(!pairEl || !entryEl || !exitEl || !sizeEl || !pnlEl || !hintEl) return;
+  const pairVal = pairEl.value;
+  const entry = parseFloat(entryEl.value);
+  const exit = parseFloat(exitEl.value);
+  const size = parseFloat(sizeEl.value);
+  const mult = getMultiplier(pairVal);
+  if(pairVal.trim() && mult===null){
+    hintEl.innerHTML = '<span class="a">Instrument non reconnu — indiquez le PnL manuellement.</span>';
+    return;
+  }
+  if(isNaN(entry) || isNaN(exit) || isNaN(size) || mult===null){
+    hintEl.textContent = "Renseignez l'entrée, la sortie et la taille pour un calcul automatique.";
+    return;
+  }
+  const dir = tradeFormState.direction === 'short' ? -1 : 1;
+  const raw = Math.round((exit - entry) * mult * size * dir * 100) / 100;
+  pnlEl.value = raw;
+  hintEl.innerHTML = `Calcul auto : (${exit} − ${entry}) × ${mult.toLocaleString('fr-FR')} × ${size} ${dir<0?'· short':'· long'} = <span class="${raw>=0?'g':'r'}" style="font-weight:600">${fmtMoney(raw)}</span>`;
+}
+function shotAreaHtml(shot){
+  if(shot){
+    return `<div class="shot-preview"><img src="${shot}"><button class="shot-remove" onclick="App.removeShot()">×</button></div>`;
+  }
+  return `<button type="button" class="btn btn-subtle" onclick="document.getElementById('f-file').click()">
+    <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h1.8l.9-1.5h5.6L13.7 6h1.8A1.5 1.5 0 0 1 17 7.5v7A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5v-7z" stroke-linejoin="round"/><circle cx="10" cy="10.5" r="2.6"/></svg>
+    Ajouter une capture</button>`;
+}
+function pickDirection(d){
+  tradeFormState.direction = d;
+  document.getElementById('dir-long').className = 'seg-btn' + (d==='long'?' sel-long':'');
+  document.getElementById('dir-short').className = 'seg-btn' + (d==='short'?' sel-short':'');
+  recalcPnl();
+}
+function toggleField(key){
+  tradeFormState[key] = !tradeFormState[key];
+  if(key==='planRespected'){
+    document.getElementById('tg-plan').classList.toggle('on', tradeFormState.planRespected);
+    document.getElementById('tg-plan-label').textContent = tradeFormState.planRespected?'Oui':'Non';
+  } else if(key==='emotional'){
+    const tg = document.getElementById('tg-emo');
+    tg.classList.toggle('on', tradeFormState.emotional);
+    tg.classList.toggle('amber', tradeFormState.emotional);
+    document.getElementById('tg-emo-label').textContent = tradeFormState.emotional?'Oui':'Non';
+    document.getElementById('emo-note-wrap').style.display = tradeFormState.emotional?'block':'none';
+  }
+}
+function toggleConfluence(tag){
+  if(tradeFormState.confluences.has(tag)) tradeFormState.confluences.delete(tag);
+  else tradeFormState.confluences.add(tag);
+  const chip = document.querySelector(`#conf-wrap .conf-chip[data-tag="${cssEsc(tag)}"]`);
+  if(chip) chip.classList.toggle('on', tradeFormState.confluences.has(tag));
+}
+function cssEsc(s){ return s.replace(/(["\\])/g,'\\$1'); }
+async function handleFile(e){
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  try{
+    const dataUrl = await compressImage(file);
+    tradeFormState.screenshot = dataUrl;
+    document.getElementById('shot-area').innerHTML = shotAreaHtml(dataUrl);
+  }catch(err){
+    const errEl = document.getElementById('f-err');
+    errEl.style.display='block'; errEl.textContent = "Impossible de lire cette image.";
+  }
+}
+function removeShot(){
+  tradeFormState.screenshot = null;
+  document.getElementById('shot-area').innerHTML = shotAreaHtml(null);
+}
+function submitTrade(){
+  const pair = document.getElementById('f-pair').value.trim();
+  const pnlRaw = document.getElementById('f-pnl').value.trim();
+  const errEl = document.getElementById('f-err');
+  if(!pair){ errEl.style.display='block'; errEl.textContent="Indiquez la paire ou l'instrument tradé."; return; }
+  if(pnlRaw==='' || isNaN(Number(pnlRaw))){ errEl.style.display='block'; errEl.textContent="Indiquez le PnL du trade (peut être négatif)."; return; }
+
+  const data = {
+    id: tradeFormState.id || uid(),
+    accountId: document.getElementById('f-account').value,
+    date: document.getElementById('f-date').value || todayISO(),
+    pair, direction: tradeFormState.direction,
+    entry: document.getElementById('f-entry').value.trim(),
+    exit: document.getElementById('f-exit').value.trim(),
+    size: document.getElementById('f-size').value.trim(),
+    pnl: Number(pnlRaw),
+    planRespected: tradeFormState.planRespected,
+    emotional: tradeFormState.emotional,
+    emotionNote: document.getElementById('f-emo-note') ? document.getElementById('f-emo-note').value.trim() : '',
+    confluences: Array.from(tradeFormState.confluences),
+    confluenceNote: document.getElementById('f-conf-note').value.trim(),
+    notes: document.getElementById('f-notes').value.trim(),
+    screenshot: tradeFormState.screenshot,
+    createdAt: tradeFormState.createdAt || new Date().toISOString()
+  };
+
+  if(tradeFormState.id){
+    const idx = state.trades.findIndex(t=>t.id===tradeFormState.id);
+    state.trades[idx] = data;
+  } else {
+    state.trades.push(data);
+  }
+  const ok = saveTrades();
+  if(!ok){
+    errEl.style.display='block';
+    errEl.textContent = "Stockage plein : essayez de retirer la capture d'écran ou d'en compresser une plus légère.";
+    if(tradeFormState.id) state.trades[state.trades.findIndex(t=>t.id===tradeFormState.id)] = data;
+    else state.trades.pop();
+    return;
+  }
+  closeModal();
+  render();
+}
+function confirmDeleteTrade(id){
+  openConfirm('Supprimer ce trade ?', 'Cette action est définitive.', ()=>{
+    state.trades = state.trades.filter(t=>t.id!==id);
+    saveTrades();
+    closeModal();
+    render();
+  });
+}
+
+/* =========================================================
+   MODAL: CONFIRM
+========================================================= */
+function openConfirm(title, body, onConfirm){
+  window._confirmAction = onConfirm;
+  const html = modalShell(title, `
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:18px">${body}</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="App.closeModal()">Annuler</button>
+      <button class="btn btn-danger" onclick="App._runConfirm()">Supprimer</button>
+    </div>
+  `, 380);
+  document.getElementById('modal-root').innerHTML = html;
+}
+
+/* =========================================================
+   LIGHTBOX
+========================================================= */
+function showLightbox(tradeId){
+  const t = state.trades.find(x=>x.id===tradeId);
+  if(!t || !t.screenshot) return;
+  document.getElementById('modal-root').innerHTML = `<div class="lightbox" onclick="App.closeModal()"><img src="${t.screenshot}"></div>`;
+}
+
+/* =========================================================
+   TAGS
+========================================================= */
+function addTag(){
+  const input = document.getElementById('new-tag-input');
+  const val = input.value.trim();
+  if(!val) return;
+  if(!state.tags.includes(val)) state.tags.push(val);
+  saveTags();
+  input.value='';
+  renderContent();
+}
+function removeTag(tag){
+  state.tags = state.tags.filter(t=>t!==tag);
+  saveTags();
+  renderContent();
+}
+
+/* =========================================================
+   NAV
+========================================================= */
+function selectAccount(id){ state.selectedAccountId = id; render(); }
+function selectTab(id){ state.tab = id; state.weekOffset = 0; renderTabs(); renderContent(); }
+function shiftWeek(delta, reset){
+  state.weekOffset = reset ? 0 : state.weekOffset + delta;
+  renderContent();
+}
+
+/* =========================================================
+   PUBLIC API
+========================================================= */
+window.App = {
+  selectAccount, selectTab, shiftWeek,
+  openAccountModal, pickAccountType, submitAccount, confirmDeleteAccount,
+  openTradeModal, pickDirection, toggleField, toggleConfluence, handleFile, removeShot, submitTrade, confirmDeleteTrade,
+  closeModal, showLightbox, addTag, removeTag,
+  _runConfirm: ()=>{ if(window._confirmAction) window._confirmAction(); }
+};
+
+/* =========================================================
+   INIT
+========================================================= */
+render();
+</script>
+</body>
+</html>
